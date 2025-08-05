@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Curator Control</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="header">
+        <h1>AI Curator</h1>
+        <div class="status-container">
+            <div id="status-indicator" class="stopped"></div>
+            <span id="status-text">Initializing...</span>
+        </div>
+    </div>
+
+    <div style="text-align:center;margin:10px 0;">
+        <p id="aiStatus" style="font-size:0.9em;color:#888;margin:5px 0;">Model status: idle</p>
+        <button id="retryButton" class="button-small" style="display:none;margin:5px 0;">Retry Download</button>
+    </div>
+
+    <!-- Loading progress bar -->
+    <div id="loading-progress-container" class="loading-progress-container" style="display:none;">
+        <div id="loading-progress-label" class="loading-progress-label">Loading AI Model...</div>
+        <div class="progress-bar-bg">
+            <div id="loading-progress-bar" class="progress-bar"></div>
+        </div>
+    </div>
+
+    <div class="control-section">
+        <label class="switch">
+            <input type="checkbox" id="runToggle">
+            <span class="slider"></span>
+        </label>
+        <label for="runToggle" class="toggle-label">Activate Auto-Curation</label>
+    </div>
+
+    <div class="interests-section">
+        <label for="interests">Define your interests (comma-separated):</label>
+        <textarea id="interests" rows="5" placeholder="e.g., artificial intelligence, startups, space exploration, quantitative finance, neuroscience..."></textarea>
+        <button id="save" class="button">Save Interests</button>
+        <div id="save-status" class="save-status"></div>
+    </div>
+
+    <div class="activity-section">
+        <div class="activity-header">
+            <label for="activity-toggle">Activity Log</label>
+            <button id="activity-toggle" class="toggle-button">Show</button>
+        </div>
+        <div id="activity-log" class="activity-log" style="display: none;">
+            <div class="activity-stats">
+                <span id="tweets-processed">Tweets processed: 0</span>
+                <span id="tweets-hidden">Hidden: 0</span>
+                <span id="tweets-kept">Kept: 0</span>
+                <button id="download-log" class="button-small">Download Log</button>
+            </div>
+            <div class="activity-list" id="activity-list">
+                <div class="activity-item placeholder">
+                    <span class="activity-text">Activity will appear here when curation starts...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

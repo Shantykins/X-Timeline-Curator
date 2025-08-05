@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Local Model Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        .progress { background-color: #d1ecf1; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; }
+        #status { font-weight: bold; margin: 10px 0; }
+        #progress { margin: 10px 0; }
+        .progress-bar { width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; }
+        .progress-fill { height: 100%; background: #007bff; border-radius: 10px; width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <h1>AI Curator Model Test</h1>
+    <div id="status">Ready to test</div>
+    
+    <div id="progress" style="display: none;">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="progressText">Loading...</div>
+    </div>
+    
+    <button onclick="runFullTest()">Run Full Test</button>
+    <button onclick="runQuickTest()">Quick Test (if model cached)</button>
+    <button onclick="clearCache()">Clear Cache</button>
+    
+    <div id="results"></div>
+
+    <script type="module">
+        let pipeline = null;
+        let testResults = [];
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = type;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function updateProgress(percent, text = '') {
+            const progressDiv = document.getElementById('progress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            if (percent >= 0) {
+                progressDiv.style.display = 'block';
+                progressFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+                progressText.textContent = text || `${Math.round(percent)}%`;
+            } else {
+                progressDiv.style.display = 'none';
+            }
+        }
+
+        function addResult(title, content, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `<h3>${title}</h3><pre>${content}</pre>`;
+            results.appendChild(div);
+            testResults.push({ title, content, type });
+        }
+
+        async function testTransformersImport() {
+            try {
+                updateStatus('Testing transformers.js import...', 'progress');
+                
+                // Test if we can import transformers.js
+                const transformersUrl = './vendor/transformers.min.js';
+                const module = await import(transformersUrl);
+                
+                const hasFields = {
+                    pipeline: typeof module.pipeline === 'function',
+                    env: typeof module.env === 'object'
+                };
+                
+                addResult('Transformers.js Import', JSON.stringify(hasFields, null, 2), 'success');
+                return module;
+            } catch (error) {
+                addResult('Transformers.js Import', `ERROR: ${error.message}\nStack: ${error.stack}`, 'error');
+                throw error;
+            }
+        }
+
+        async function testNetworkAccess() {
+            try {
+                updateStatus('Testing network access...', 'progress');
+                
+                const tests = [
+                    'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/config.json',
+                    'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer.json'
+                ];
+                
+                const results = {};
+                for (const url of tests) {
+                    try {
+                        const response = await fetch(url);
+                        results[url] = {
+                            status: response.status,
+                            ok: response.ok,
+                            headers: Object.fromEntries(response.headers.entries())
+                        };
+                    } catch (err) {
+                        results[url] = { error: err.message };
+                    }
+                }
+                
+                addResult('Network Access Test', JSON.stringify(results, null, 2), 'success');
+                return results;
+            } catch (error) {
+                addResult('Network Access Test', `ERROR: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function testModelDownload() {
+            try {
+                updateStatus('Testing model download and initialization...', 'progress');
+                updateProgress(0, 'Starting model download...');
+                
+                const { pipeline: pipelineFunc } = await import('./vendor/transformers.min.js');
+                
+                // Track progress
+                let lastProgress = 0;
+                const progressCallback = (data) => {
+                    if (data.progress !== undefined) {
+                        updateProgress(data.progress, data.status || 'Downloading...');
+                        lastProgress = data.progress;
+                    }
+                };
+                
+                // Set up progress tracking (simplified)
+                updateProgress(10, 'Creating pipeline...');
+                
+                const startTime = Date.now();
+                pipeline = await pipelineFunc('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { 
+                    quantized: true,
+                    progress_callback: progressCallback
+                });
+                const loadTime = (Date.now() - startTime) / 1000;
+                
+                updateProgress(100, 'Model loaded successfully!');
+                
+                const result = {
+                    loadTime: `${loadTime.toFixed(2)} seconds`,
+                    modelType: typeof pipeline,
+                    modelLoaded: pipeline !== null
+                };
+                
+                addResult('Model Download & Initialization', JSON.stringify(result, null, 2), 'success');
+                return pipeline;
+            } catch (error) {
+                updateProgress(-1);
+                addResult('Model Download & Initialization', `ERROR: ${error.message}\nStack: ${error.stack}`, 'error');
+                throw error;
+            }
+        }
+
+        async function testInference() {
+            if (!pipeline) {
+                throw new Error('Pipeline not loaded');
+            }
+            
+            try {
+                updateStatus('Testing model inference...', 'progress');
+                
+                const testTexts = [
+                    'artificial intelligence and machine learning',
+                    'stock market and financial analysis',
+                    'sponsored content and advertisements',
+                    'breaking news about technology',
+                    'follow for follow back'
+                ];
+                
+                const results = {};
+                
+                for (const text of testTexts) {
+                    const startTime = Date.now();
+                    const embedding = await pipeline(text, { pooling: 'mean', normalize: true });
+                    const inferenceTime = Date.now() - startTime;
+                    
+                    results[text] = {
+                        embeddingLength: embedding.length,
+                        embeddingType: typeof embedding,
+                        inferenceTime: `${inferenceTime}ms`,
+                        sampleValues: embedding.slice(0, 5).map(v => v.toFixed(4))
+                    };
+                }
+                
+                addResult('Model Inference Test', JSON.stringify(results, null, 2), 'success');
+                return results;
+            } catch (error) {
+                addResult('Model Inference Test', `ERROR: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function testSimilarity() {
+            if (!pipeline) {
+                throw new Error('Pipeline not loaded');
+            }
+            
+            try {
+                updateStatus('Testing similarity calculations...', 'progress');
+                
+                const interests = ['artificial intelligence', 'machine learning', 'technology'];
+                const tweets = [
+                    'New breakthrough in AI research published today',
+                    'Machine learning model achieves state-of-the-art results',
+                    'Check out this sponsored crypto opportunity!',
+                    'Scientists discover new quantum computing method',
+                    'Like and retweet for a chance to win!'
+                ];
+                
+                // Get interest embeddings
+                const interestEmbeddings = {};
+                for (const interest of interests) {
+                    interestEmbeddings[interest] = await pipeline(interest, { pooling: 'mean', normalize: true });
+                }
+                
+                // Test tweets against interests
+                const results = {};
+                for (const tweet of tweets) {
+                    const tweetEmbedding = await pipeline(tweet, { pooling: 'mean', normalize: true });
+                    
+                    const similarities = {};
+                    for (const [interest, interestEmb] of Object.entries(interestEmbeddings)) {
+                        // Cosine similarity
+                        let dot = 0, normA = 0, normB = 0;
+                        for (let i = 0; i < tweetEmbedding.length; i++) {
+                            dot += tweetEmbedding[i] * interestEmb[i];
+                            normA += tweetEmbedding[i] ** 2;
+                            normB += interestEmb[i] ** 2;
+                        }
+                        const similarity = dot / (Math.sqrt(normA) * Math.sqrt(normB));
+                        similarities[interest] = similarity.toFixed(4);
+                    }
+                    
+                    const maxSimilarity = Math.max(...Object.values(similarities).map(Number));
+                    const classification = maxSimilarity > 0.35 ? 'KEEP' : 'HIDE';
+                    
+                    results[tweet] = {
+                        similarities,
+                        maxSimilarity: maxSimilarity.toFixed(4),
+                        classification
+                    };
+                }
+                
+                addResult('Similarity & Classification Test', JSON.stringify(results, null, 2), 'success');
+                return results;
+            } catch (error) {
+                addResult('Similarity & Classification Test', `ERROR: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        window.runFullTest = async function() {
+            try {
+                document.getElementById('results').innerHTML = '';
+                testResults = [];
+                
+                updateStatus('Starting full test suite...', 'progress');
+                
+                await testTransformersImport();
+                await testNetworkAccess();
+                await testModelDownload();
+                await testInference();
+                await testSimilarity();
+                
+                updateStatus('All tests completed successfully!', 'success');
+                updateProgress(-1);
+                
+                // Summary
+                addResult('Test Summary', `${testResults.length} tests completed\nAll tests passed!`, 'success');
+                
+            } catch (error) {
+                updateStatus(`Test failed: ${error.message}`, 'error');
+                updateProgress(-1);
+                addResult('Test Failed', `Error: ${error.message}\nStack: ${error.stack}`, 'error');
+            }
+        };
+
+        window.runQuickTest = async function() {
+            try {
+                if (!pipeline) {
+                    await testModelDownload();
+                }
+                await testInference();
+                updateStatus('Quick test completed!', 'success');
+            } catch (error) {
+                updateStatus(`Quick test failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearCache = async function() {
+            try {
+                // Clear IndexedDB cache
+                const databases = await indexedDB.databases();
+                for (const db of databases) {
+                    if (db.name.includes('transformers') || db.name.includes('huggingface')) {
+                        indexedDB.deleteDatabase(db.name);
+                    }
+                }
+                updateStatus('Cache cleared. Reload page to test fresh download.', 'success');
+            } catch (error) {
+                updateStatus(`Error clearing cache: ${error.message}`, 'error');
+            }
+        };
+
+        // Auto-run quick test if model is already cached
+        window.addEventListener('load', () => {
+            updateStatus('Page loaded. Click "Run Full Test" to start.', 'info');
+        });
+    </script>
+</body>
+</html>

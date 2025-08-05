@@ -1,0 +1,46 @@
+{
+  "name": "ai-curator-extension",
+  "version": "1.0.0",
+  "description": "AI-powered Twitter/X feed curator running 100% locally using transformers.js",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "test:model": "node tests/test-model-node.js",
+    "test:network": "node tests/test-simple-download.js"
+  },
+  "keywords": [
+    "chrome-extension",
+    "ai",
+    "curator",
+    "twitter",
+    "x",
+    "machine-learning",
+    "transformers",
+    "local-ai",
+    "privacy"
+  ],
+  "author": "AI Curator Extension Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ai-curator-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/ai-curator-extension/issues"
+  },
+  "homepage": "https://github.com/your-username/ai-curator-extension#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.22.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.0.5",
+    "jsdom": "^22.1.0",
+    "sinon-chrome": "^3.0.1"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^2.17.2"
+  }
+}

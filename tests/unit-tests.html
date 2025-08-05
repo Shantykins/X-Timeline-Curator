@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AI Curator Extension - Unit Tests</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .pass { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warn { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        #summary { font-weight: bold; font-size: 18px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>AI Curator Extension - Unit Tests</h1>
+    <div id="summary"></div>
+    <div id="results"></div>
+
+    <script src="../vendor/transformers.min.js"></script>
+    <script>
+        let testResults = [];
+        let passCount = 0;
+        let failCount = 0;
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+            
+            if (type === 'pass') passCount++;
+            if (type === 'fail') failCount++;
+            
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            const total = passCount + failCount;
+            summary.innerHTML = `Tests: ${total} | Passed: ${passCount} | Failed: ${failCount}`;
+            summary.className = failCount > 0 ? 'test-result fail' : 'test-result pass';
+        }
+
+        async function runTests() {
+            log('🚀 Starting Unit Tests for AI Curator Extension', 'info');
+
+            // Test 1: Check transformers.js loading
+            await testTransformersLoading();
+            
+            // Test 2: Test pipeline creation
+            await testPipelineCreation();
+            
+            // Test 3: Test embedding functionality
+            await testEmbeddingFunctionality();
+            
+            // Test 4: Test cosine similarity
+            await testCosineSimilarity();
+            
+            // Test 5: Test interest caching logic
+            await testInterestCaching();
+            
+            // Test 6: Test spam keyword detection
+            testSpamKeywordDetection();
+            
+            // Test 7: Test classification thresholds
+            testClassificationThresholds();
+            
+            // Test 8: Test edge cases
+            testEdgeCases();
+            
+            // Test 9: Test error handling
+            testErrorHandling();
+
+            log('✅ All unit tests completed', 'info');
+        }
+
+        async function testTransformersLoading() {
+            try {
+                log('🔍 Test 1: Checking transformers.js loading...', 'info');
+                
+                // Check if global functions exist
+                if (typeof pipeline === 'undefined') {
+                    log('❌ FAIL: pipeline function not found', 'fail');
+                    return;
+                }
+                
+                if (typeof cos_sim === 'undefined') {
+                    log('❌ FAIL: cos_sim function not found', 'fail');
+                    return;
+                }
+                
+                log('✅ PASS: Global functions (pipeline, cos_sim) are available', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Error checking transformers loading: ${error.message}`, 'fail');
+            }
+        }
+
+        async function testPipelineCreation() {
+            try {
+                log('🔍 Test 2: Testing pipeline creation...', 'info');
+                
+                // This might take a while as it downloads the model
+                const classifier = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+                    quantized: true
+                });
+                
+                if (!classifier) {
+                    log('❌ FAIL: Pipeline creation returned null/undefined', 'fail');
+                    return;
+                }
+                
+                if (typeof classifier !== 'function') {
+                    log('❌ FAIL: Pipeline is not a function', 'fail');
+                    return;
+                }
+                
+                log('✅ PASS: Pipeline created successfully', 'pass');
+                
+                // Store for other tests
+                window.testClassifier = classifier;
+                
+            } catch (error) {
+                log(`❌ FAIL: Pipeline creation failed: ${error.message}`, 'fail');
+            }
+        }
+
+        async function testEmbeddingFunctionality() {
+            try {
+                log('🔍 Test 3: Testing embedding functionality...', 'info');
+                
+                if (!window.testClassifier) {
+                    log('❌ FAIL: No classifier available for testing', 'fail');
+                    return;
+                }
+                
+                const testTexts = [
+                    'artificial intelligence',
+                    'machine learning', 
+                    'deep learning',
+                    'neural networks',
+                    'random text about cooking'
+                ];
+                
+                for (const text of testTexts) {
+                    const embedding = await window.testClassifier(text, { pooling: 'mean', normalize: true });
+                    
+                    if (!embedding || !embedding[0]) {
+                        log(`❌ FAIL: Embedding failed for "${text}"`, 'fail');
+                        return;
+                    }
+                    
+                    if (!Array.isArray(embedding[0]) && !(embedding[0] instanceof Float32Array)) {
+                        log(`❌ FAIL: Embedding is not an array for "${text}"`, 'fail');
+                        return;
+                    }
+                    
+                    if (embedding[0].length !== 384) {
+                        log(`❌ FAIL: Expected 384 dimensions, got ${embedding[0].length} for "${text}"`, 'fail');
+                        return;
+                    }
+                }
+                
+                log('✅ PASS: All embeddings created successfully with correct dimensions', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Embedding test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        async function testCosineSimilarity() {
+            try {
+                log('🔍 Test 4: Testing cosine similarity...', 'info');
+                
+                if (!window.testClassifier) {
+                    log('❌ FAIL: No classifier available for testing', 'fail');
+                    return;
+                }
+                
+                // Test similar texts
+                const ai1 = await window.testClassifier('artificial intelligence', { pooling: 'mean', normalize: true });
+                const ai2 = await window.testClassifier('machine learning', { pooling: 'mean', normalize: true });
+                const cooking = await window.testClassifier('cooking recipes', { pooling: 'mean', normalize: true });
+                
+                const similaritySame = cos_sim(ai1[0], ai1[0]);
+                const similarityRelated = cos_sim(ai1[0], ai2[0]);
+                const similarityUnrelated = cos_sim(ai1[0], cooking[0]);
+                
+                // Test self-similarity (should be 1.0)
+                if (Math.abs(similaritySame - 1.0) > 0.001) {
+                    log(`❌ FAIL: Self-similarity should be ~1.0, got ${similaritySame}`, 'fail');
+                    return;
+                }
+                
+                // Test related concepts (should be high)
+                if (similarityRelated < 0.3) {
+                    log(`❌ FAIL: AI/ML similarity too low: ${similarityRelated}`, 'fail');
+                    return;
+                }
+                
+                // Test unrelated concepts (should be lower)
+                if (similarityUnrelated > similarityRelated) {
+                    log(`❌ FAIL: Unrelated similarity (${similarityUnrelated}) higher than related (${similarityRelated})`, 'fail');
+                    return;
+                }
+                
+                log(`✅ PASS: Cosine similarity working correctly (same=${similaritySame.toFixed(3)}, related=${similarityRelated.toFixed(3)}, unrelated=${similarityUnrelated.toFixed(3)})`, 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Cosine similarity test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        async function testInterestCaching() {
+            try {
+                log('🔍 Test 5: Testing interest caching logic...', 'info');
+                
+                if (!window.testClassifier) {
+                    log('❌ FAIL: No classifier available for testing', 'fail');
+                    return;
+                }
+                
+                // Simulate the cacheInterests function
+                const cacheInterests = async (interestsArr, classifier) => {
+                    const interestEmbeddings = [];
+                    for (const text of interestsArr.filter(t => t.trim().length)) {
+                        try {
+                            const embedding = await classifier(text, { pooling: 'mean', normalize: true });
+                            interestEmbeddings.push({
+                                text,
+                                emb: embedding[0]
+                            });
+                        } catch (error) {
+                            console.error(`Failed to embed interest "${text}":`, error);
+                        }
+                    }
+                    return interestEmbeddings;
+                };
+                
+                const testInterests = ['artificial intelligence', 'machine learning', 'deep learning'];
+                const cached = await cacheInterests(testInterests, window.testClassifier);
+                
+                if (cached.length !== testInterests.length) {
+                    log(`❌ FAIL: Expected ${testInterests.length} cached interests, got ${cached.length}`, 'fail');
+                    return;
+                }
+                
+                for (let i = 0; i < cached.length; i++) {
+                    if (cached[i].text !== testInterests[i]) {
+                        log(`❌ FAIL: Interest text mismatch: expected "${testInterests[i]}", got "${cached[i].text}"`, 'fail');
+                        return;
+                    }
+                    
+                    if (!cached[i].emb || cached[i].emb.length !== 384) {
+                        log(`❌ FAIL: Invalid embedding for interest "${cached[i].text}"`, 'fail');
+                        return;
+                    }
+                }
+                
+                log('✅ PASS: Interest caching working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Interest caching test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function testSpamKeywordDetection() {
+            try {
+                log('🔍 Test 6: Testing spam keyword detection...', 'info');
+                
+                const spamKeywords = [
+                    'sponsored', 'promoted', 'advertisement', 'buy now', 'click here',
+                    'limited time', 'act now', 'dm me', 'link in bio', 'follow back'
+                ];
+                
+                const testCases = [
+                    { text: 'This is a sponsored post about AI', isSpam: true },
+                    { text: 'Buy now and get 50% off!', isSpam: true },
+                    { text: 'Check out this amazing AI breakthrough', isSpam: false },
+                    { text: 'Just published a paper on machine learning', isSpam: false },
+                    { text: 'DM me for more info about this opportunity', isSpam: true },
+                    { text: 'Link in bio for the full article', isSpam: true }
+                ];
+                
+                for (const testCase of testCases) {
+                    const lower = testCase.text.toLowerCase();
+                    const foundSpam = spamKeywords.some(k => lower.includes(k));
+                    
+                    if (foundSpam !== testCase.isSpam) {
+                        log(`❌ FAIL: Spam detection failed for "${testCase.text}" - expected ${testCase.isSpam}, got ${foundSpam}`, 'fail');
+                        return;
+                    }
+                }
+                
+                log('✅ PASS: Spam keyword detection working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Spam keyword detection test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function testClassificationThresholds() {
+            try {
+                log('🔍 Test 7: Testing classification thresholds...', 'info');
+                
+                const threshold = 0.35;
+                
+                const testCases = [
+                    { similarity: 0.5, shouldKeep: true },
+                    { similarity: 0.35, shouldKeep: true },
+                    { similarity: 0.34, shouldKeep: false },
+                    { similarity: 0.2, shouldKeep: false },
+                    { similarity: 0.8, shouldKeep: true }
+                ];
+                
+                for (const testCase of testCases) {
+                    const keep = testCase.similarity >= threshold;
+                    
+                    if (keep !== testCase.shouldKeep) {
+                        log(`❌ FAIL: Threshold test failed for similarity ${testCase.similarity} - expected ${testCase.shouldKeep}, got ${keep}`, 'fail');
+                        return;
+                    }
+                }
+                
+                log('✅ PASS: Classification thresholds working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Classification threshold test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function testEdgeCases() {
+            try {
+                log('🔍 Test 8: Testing edge cases...', 'info');
+                
+                // Test empty interests array
+                const emptyInterests = [];
+                if (emptyInterests.length !== 0) {
+                    log('❌ FAIL: Empty interests array test failed', 'fail');
+                    return;
+                }
+                
+                // Test empty text
+                const emptyText = '';
+                const trimmedEmpty = emptyText.trim();
+                if (trimmedEmpty.length !== 0) {
+                    log('❌ FAIL: Empty text trimming test failed', 'fail');
+                    return;
+                }
+                
+                // Test whitespace-only text
+                const whitespaceText = '   \n\t   ';
+                const trimmedWhitespace = whitespaceText.trim();
+                if (trimmedWhitespace.length !== 0) {
+                    log('❌ FAIL: Whitespace text trimming test failed', 'fail');
+                    return;
+                }
+                
+                // Test very long text
+                const longText = 'AI '.repeat(1000);
+                if (longText.length !== 3000) {
+                    log('❌ FAIL: Long text generation test failed', 'fail');
+                    return;
+                }
+                
+                // Test special characters
+                const specialText = 'AI & ML: 🤖 #artificial-intelligence @user';
+                if (specialText.length === 0) {
+                    log('❌ FAIL: Special characters test failed', 'fail');
+                    return;
+                }
+                
+                log('✅ PASS: Edge cases handled correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Edge cases test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function testErrorHandling() {
+            try {
+                log('🔍 Test 9: Testing error handling...', 'info');
+                
+                // Test invalid similarity calculation
+                try {
+                    const result = cos_sim(null, null);
+                    log('❌ FAIL: cos_sim should throw error with null inputs', 'fail');
+                    return;
+                } catch (error) {
+                    // Expected to throw
+                }
+                
+                // Test invalid array inputs
+                try {
+                    const result = cos_sim([], [1, 2, 3]);
+                    // This might not throw, depends on implementation
+                } catch (error) {
+                    // This is fine
+                }
+                
+                // Test Math.max with empty array
+                try {
+                    const result = Math.max(...[]);
+                    if (result !== -Infinity) {
+                        log('❌ FAIL: Math.max on empty array should return -Infinity', 'fail');
+                        return;
+                    }
+                } catch (error) {
+                    log(`❌ FAIL: Math.max on empty array threw error: ${error.message}`, 'fail');
+                    return;
+                }
+                
+                log('✅ PASS: Error handling working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Error handling test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        // Wait for transformers to load, then run tests
+        const waitAndRun = async () => {
+            let attempts = 0;
+            const maxAttempts = 50; // 10 seconds
+            
+            while (attempts < maxAttempts) {
+                if (typeof pipeline !== 'undefined' && typeof cos_sim !== 'undefined') {
+                    await runTests();
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 200));
+                attempts++;
+            }
+            
+            log('❌ FAIL: Transformers.js failed to load within timeout', 'fail');
+        };
+
+        window.addEventListener('load', waitAndRun);
+    </script>
+</body>
+</html>

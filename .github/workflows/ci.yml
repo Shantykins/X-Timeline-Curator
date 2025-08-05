@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run unit tests
+      run: npm test
+    
+    - name: Test model functionality
+      run: npm run test:model
+      
+    - name: Test network connectivity
+      run: npm run test:network
+    
+    - name: Validate manifest
+      run: |
+        node -e "
+          const manifest = require('./manifest.json');
+          console.log('✅ Manifest is valid JSON');
+          console.log('Extension name:', manifest.name);
+          console.log('Version:', manifest.version);
+          console.log('Manifest version:', manifest.manifest_version);
+        "
+    
+    - name: Check for required files
+      run: |
+        test -f manifest.json || (echo '❌ manifest.json missing' && exit 1)
+        test -f scripts/background.js || (echo '❌ background.js missing' && exit 1)
+        test -f scripts/content.js || (echo '❌ content.js missing' && exit 1)
+        test -f scripts/offscreen.js || (echo '❌ offscreen.js missing' && exit 1)
+        test -f scripts/modelManager.js || (echo '❌ modelManager.js missing' && exit 1)
+        test -f popup/popup.html || (echo '❌ popup.html missing' && exit 1)
+        test -f popup/popup.js || (echo '❌ popup.js missing' && exit 1)
+        test -f vendor/transformers.min.js || (echo '❌ transformers.min.js missing' && exit 1)
+        echo '✅ All required files present'
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Basic code quality checks
+      run: |
+        # Check for common issues
+        echo "🔍 Checking for console.log statements..."
+        if grep -r "console\.log" scripts/ popup/ --exclude-dir=node_modules || true; then
+          echo "⚠️ Found console.log statements (consider removing for production)"
+        fi
+        
+        echo "🔍 Checking for TODO/FIXME comments..."
+        if grep -r "TODO\|FIXME" scripts/ popup/ --exclude-dir=node_modules || true; then
+          echo "ℹ️ Found TODO/FIXME comments"
+        fi
+        
+        echo "🔍 Checking for hardcoded URLs..."
+        if grep -r "http://\|https://" scripts/ popup/ --exclude="*.md" --exclude-dir=node_modules | grep -v "huggingface.co\|x.com\|twitter.com" || true; then
+          echo "⚠️ Found potentially hardcoded URLs"
+        fi
+        
+        echo "✅ Basic code quality checks completed"

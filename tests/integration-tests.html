@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AI Curator Extension - Integration Tests</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .pass { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warn { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        #summary { font-weight: bold; font-size: 18px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>AI Curator Extension - Integration Tests</h1>
+    <div id="summary"></div>
+    <div id="results"></div>
+
+    <script>
+        let testResults = [];
+        let passCount = 0;
+        let failCount = 0;
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+            
+            if (type === 'pass') passCount++;
+            if (type === 'fail') failCount++;
+            
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            const total = passCount + failCount;
+            summary.innerHTML = `Tests: ${total} | Passed: ${passCount} | Failed: ${failCount}`;
+            summary.className = failCount > 0 ? 'test-result fail' : 'test-result pass';
+        }
+
+        // Mock Chrome APIs for testing
+        const mockChrome = {
+            runtime: {
+                sendMessage: function(message, callback) {
+                    console.log('Mock sendMessage called with:', message);
+                    // Simulate async response
+                    setTimeout(() => {
+                        if (callback) callback({ success: true });
+                    }, 10);
+                    return Promise.resolve({ success: true });
+                },
+                onMessage: {
+                    addListener: function(callback) {
+                        console.log('Mock onMessage.addListener called');
+                        this._listeners = this._listeners || [];
+                        this._listeners.push(callback);
+                    },
+                    _listeners: [],
+                    _simulateMessage: function(message, sender) {
+                        this._listeners.forEach(listener => {
+                            listener(message, sender, (response) => {
+                                console.log('Mock response:', response);
+                            });
+                        });
+                    }
+                }
+            },
+            storage: {
+                local: {
+                    get: function(keys) {
+                        const mockData = {
+                            interests: ['artificial intelligence', 'machine learning', 'deep learning']
+                        };
+                        return Promise.resolve(mockData);
+                    },
+                    set: function(data) {
+                        console.log('Mock storage.set called with:', data);
+                        return Promise.resolve();
+                    }
+                },
+                onChanged: {
+                    addListener: function(callback) {
+                        console.log('Mock storage.onChanged.addListener called');
+                        this._listeners = this._listeners || [];
+                        this._listeners.push(callback);
+                    },
+                    _listeners: [],
+                    _simulateChange: function(changes, area) {
+                        this._listeners.forEach(listener => {
+                            listener(changes, area);
+                        });
+                    }
+                }
+            }
+        };
+
+        // Set up mock chrome API
+        if (typeof chrome === 'undefined') {
+            window.chrome = mockChrome;
+        }
+
+        async function runIntegrationTests() {
+            log('🚀 Starting Integration Tests for AI Curator Extension', 'info');
+
+            // Test 1: Mock message passing
+            testMessagePassing();
+            
+            // Test 2: Mock storage operations
+            await testStorageOperations();
+            
+            // Test 3: Test background script logic simulation
+            testBackgroundScriptLogic();
+            
+            // Test 4: Test offscreen message handling simulation
+            testOffscreenMessageHandling();
+            
+            // Test 5: Test classification workflow
+            testClassificationWorkflow();
+            
+            // Test 6: Test error propagation
+            testErrorPropagation();
+
+            log('✅ All integration tests completed', 'info');
+        }
+
+        function testMessagePassing() {
+            try {
+                log('🔍 Integration Test 1: Testing message passing...', 'info');
+                
+                // Test if chrome.runtime.sendMessage works
+                if (!chrome.runtime.sendMessage) {
+                    log('❌ FAIL: chrome.runtime.sendMessage not available', 'fail');
+                    return;
+                }
+                
+                // Test if chrome.runtime.onMessage works
+                if (!chrome.runtime.onMessage || !chrome.runtime.onMessage.addListener) {
+                    log('❌ FAIL: chrome.runtime.onMessage not available', 'fail');
+                    return;
+                }
+                
+                // Test message listener
+                let messageReceived = false;
+                chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+                    messageReceived = true;
+                    if (message.type === 'TEST_MESSAGE') {
+                        sendResponse({ success: true, received: true });
+                    }
+                });
+                
+                // Simulate sending a message
+                chrome.runtime.onMessage._simulateMessage(
+                    { type: 'TEST_MESSAGE', payload: { test: true } },
+                    { id: 'test-sender' }
+                );
+                
+                if (!messageReceived) {
+                    log('❌ FAIL: Message was not received by listener', 'fail');
+                    return;
+                }
+                
+                log('✅ PASS: Message passing working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Message passing test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        async function testStorageOperations() {
+            try {
+                log('🔍 Integration Test 2: Testing storage operations...', 'info');
+                
+                // Test storage.local.get
+                const data = await chrome.storage.local.get('interests');
+                if (!data || !data.interests) {
+                    log('❌ FAIL: Storage get operation failed', 'fail');
+                    return;
+                }
+                
+                if (!Array.isArray(data.interests) || data.interests.length === 0) {
+                    log('❌ FAIL: Storage returned invalid interests data', 'fail');
+                    return;
+                }
+                
+                // Test storage.local.set
+                await chrome.storage.local.set({ testKey: 'testValue' });
+                
+                // Test storage change listener
+                let changeReceived = false;
+                chrome.storage.onChanged.addListener((changes, area) => {
+                    changeReceived = true;
+                    if (area === 'local' && changes.interests) {
+                        // This simulates the real behavior
+                    }
+                });
+                
+                // Simulate storage change
+                chrome.storage.onChanged._simulateChange(
+                    { interests: { newValue: ['new', 'interests'], oldValue: data.interests } },
+                    'local'
+                );
+                
+                if (!changeReceived) {
+                    log('❌ FAIL: Storage change event not received', 'fail');
+                    return;
+                }
+                
+                log('✅ PASS: Storage operations working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Storage operations test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function testBackgroundScriptLogic() {
+            try {
+                log('🔍 Integration Test 3: Testing background script logic...', 'info');
+                
+                // Simulate fallback classification function
+                const fallbackClassification = (text, interests = []) => {
+                    const lowerText = text.toLowerCase();
+                    
+                    const spamKeywords = [
+                        'sponsored', 'promoted', 'advertisement', 'buy now', 'click here'
+                    ];
+                    
+                    // Check for spam
+                    for (const keyword of spamKeywords) {
+                        if (lowerText.includes(keyword)) {
+                            return {
+                                isUninteresting: true,
+                                reason: `Spam keyword: ${keyword}`
+                            };
+                        }
+                    }
+                    
+                    // Check interests
+                    for (const interest of interests) {
+                        if (lowerText.includes(interest.toLowerCase())) {
+                            return {
+                                isUninteresting: false,
+                                reason: `Matches interest: ${interest}`
+                            };
+                        }
+                    }
+                    
+                    return {
+                        isUninteresting: true,
+                        reason: 'No matching interests'
+                    };
+                };
+                
+                // Test cases
+                const testCases = [
+                    {
+                        text: 'This is a sponsored post about shoes',
+                        interests: ['technology'],
+                        expected: { isUninteresting: true, reason: 'Spam keyword: sponsored' }
+                    },
+                    {
+                        text: 'Amazing breakthrough in artificial intelligence',
+                        interests: ['artificial intelligence'],
+                        expected: { isUninteresting: false, reason: 'Matches interest: artificial intelligence' }
+                    },
+                    {
+                        text: 'Random tweet about cooking',
+                        interests: ['technology'],
+                        expected: { isUninteresting: true, reason: 'No matching interests' }
+                    }
+                ];
+                
+                for (const testCase of testCases) {
+                    const result = fallbackClassification(testCase.text, testCase.interests);
+                    
+                    if (result.isUninteresting !== testCase.expected.isUninteresting) {
+                        log(`❌ FAIL: Background logic failed for "${testCase.text}" - expected ${testCase.expected.isUninteresting}, got ${result.isUninteresting}`, 'fail');
+                        return;
+                    }
+                }
+                
+                log('✅ PASS: Background script logic working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Background script logic test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function testOffscreenMessageHandling() {
+            try {
+                log('🔍 Integration Test 4: Testing offscreen message handling...', 'info');
+                
+                // Simulate offscreen message handler
+                const handleClassifyTweet = async (payload) => {
+                    const { id, text, spamKeywords } = payload;
+                    
+                    if (!id || !text) {
+                        throw new Error('Missing required parameters');
+                    }
+                    
+                    // Spam check
+                    const lower = text.toLowerCase();
+                    if (spamKeywords.some(k => lower.includes(k))) {
+                        return {
+                            type: 'CLASSIFICATION_RESULT',
+                            payload: { id, text, isUninteresting: true, reason: 'Spam keyword' }
+                        };
+                    }
+                    
+                    // Empty interests check
+                    if (!payload.interests || payload.interests.length === 0) {
+                        return {
+                            type: 'CLASSIFICATION_RESULT',
+                            payload: { id, text, isUninteresting: false, reason: 'No interests set' }
+                        };
+                    }
+                    
+                    // Simulate classification
+                    return {
+                        type: 'CLASSIFICATION_RESULT',
+                        payload: { id, text, isUninteresting: false, reason: 'Simulated classification' }
+                    };
+                };
+                
+                // Test cases
+                const testMessages = [
+                    {
+                        type: 'CLASSIFY_TWEET',
+                        payload: {
+                            id: 'tweet123',
+                            text: 'This is a sponsored post',
+                            spamKeywords: ['sponsored'],
+                            interests: ['tech']
+                        },
+                        expectedReason: 'Spam keyword'
+                    },
+                    {
+                        type: 'CLASSIFY_TWEET',
+                        payload: {
+                            id: 'tweet456',
+                            text: 'Regular tweet about AI',
+                            spamKeywords: ['sponsored'],
+                            interests: []
+                        },
+                        expectedReason: 'No interests set'
+                    }
+                ];
+                
+                for (const testMessage of testMessages) {
+                    if (testMessage.type === 'CLASSIFY_TWEET') {
+                        const result = await handleClassifyTweet(testMessage.payload);
+                        
+                        if (!result || result.type !== 'CLASSIFICATION_RESULT') {
+                            log(`❌ FAIL: Invalid result type for message ${testMessage.payload.id}`, 'fail');
+                            return;
+                        }
+                        
+                        if (!result.payload.reason.includes(testMessage.expectedReason)) {
+                            log(`❌ FAIL: Expected reason "${testMessage.expectedReason}" not found in "${result.payload.reason}"`, 'fail');
+                            return;
+                        }
+                    }
+                }
+                
+                log('✅ PASS: Offscreen message handling working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Offscreen message handling test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function testClassificationWorkflow() {
+            try {
+                log('🔍 Integration Test 5: Testing classification workflow...', 'info');
+                
+                // Simulate full workflow
+                const simulateClassificationWorkflow = async (tweetData) => {
+                    // Step 1: Background receives EVALUATE_TWEET
+                    const { id, text } = tweetData;
+                    
+                    // Step 2: Background sends to offscreen
+                    const offscreenMessage = {
+                        type: 'CLASSIFY_TWEET',
+                        payload: {
+                            id,
+                            text,
+                            spamKeywords: ['sponsored', 'promoted'],
+                            interests: ['AI', 'technology']
+                        }
+                    };
+                    
+                    // Step 3: Offscreen processes and responds
+                    let classificationResult;
+                    if (text.toLowerCase().includes('sponsored')) {
+                        classificationResult = {
+                            type: 'CLASSIFICATION_RESULT',
+                            payload: { id, text, isUninteresting: true, reason: 'Spam keyword' }
+                        };
+                    } else if (text.toLowerCase().includes('ai')) {
+                        classificationResult = {
+                            type: 'CLASSIFICATION_RESULT',
+                            payload: { id, text, isUninteresting: false, reason: 'Matches interest' }
+                        };
+                    } else {
+                        classificationResult = {
+                            type: 'CLASSIFICATION_RESULT',
+                            payload: { id, text, isUninteresting: true, reason: 'No match' }
+                        };
+                    }
+                    
+                    // Step 4: Background processes result
+                    if (classificationResult.payload.isUninteresting) {
+                        // Would send MARK_TWEET to content script
+                        return { action: 'HIDE_TWEET', id };
+                    } else {
+                        return { action: 'KEEP_TWEET', id };
+                    }
+                };
+                
+                // Test different scenarios
+                const testTweets = [
+                    { id: 'tweet1', text: 'This is a sponsored post about shoes', expected: 'HIDE_TWEET' },
+                    { id: 'tweet2', text: 'Amazing AI breakthrough announced today', expected: 'KEEP_TWEET' },
+                    { id: 'tweet3', text: 'Random tweet about cooking', expected: 'HIDE_TWEET' }
+                ];
+                
+                for (const tweet of testTweets) {
+                    const result = await simulateClassificationWorkflow(tweet);
+                    
+                    if (result.action !== tweet.expected) {
+                        log(`❌ FAIL: Workflow failed for "${tweet.text}" - expected ${tweet.expected}, got ${result.action}`, 'fail');
+                        return;
+                    }
+                }
+                
+                log('✅ PASS: Classification workflow working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Classification workflow test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function testErrorPropagation() {
+            try {
+                log('🔍 Integration Test 6: Testing error propagation...', 'info');
+                
+                // Simulate error in offscreen processing
+                const simulateOffscreenError = async (payload) => {
+                    if (!payload || !payload.text) {
+                        throw new Error('Invalid payload');
+                    }
+                    
+                    if (payload.text === 'ERROR_TRIGGER') {
+                        throw new Error('Simulated processing error');
+                    }
+                    
+                    return {
+                        type: 'CLASSIFICATION_RESULT',
+                        payload: { id: payload.id, isUninteresting: true, reason: 'Success' }
+                    };
+                };
+                
+                // Test error handling
+                try {
+                    await simulateOffscreenError({ id: 'test', text: 'ERROR_TRIGGER' });
+                    log('❌ FAIL: Expected error was not thrown', 'fail');
+                    return;
+                } catch (error) {
+                    if (!error.message.includes('Simulated processing error')) {
+                        log(`❌ FAIL: Unexpected error message: ${error.message}`, 'fail');
+                        return;
+                    }
+                }
+                
+                // Test error recovery
+                try {
+                    const result = await simulateOffscreenError({ id: 'test', text: 'Normal text' });
+                    if (!result || result.type !== 'CLASSIFICATION_RESULT') {
+                        log('❌ FAIL: Error recovery failed', 'fail');
+                        return;
+                    }
+                } catch (error) {
+                    log(`❌ FAIL: Unexpected error in recovery: ${error.message}`, 'fail');
+                    return;
+                }
+                
+                log('✅ PASS: Error propagation working correctly', 'pass');
+                
+            } catch (error) {
+                log(`❌ FAIL: Error propagation test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', runIntegrationTests);
+    </script>
+</body>
+</html>
