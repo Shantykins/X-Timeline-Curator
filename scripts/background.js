@@ -645,7 +645,9 @@ chrome.runtime.onInstalled.addListener(async () => {
         });
         await initializeCachedInterests();
         await broadcastStatus();
-        console.log('Extension installed: Initial setup complete');
+        console.log('🤖 X Timeline Curator v1.0.0 initialized');
+        console.log('📚 Powered by all-MiniLM-L6-v2 (Apache 2.0) via 🤗 Transformers.js');
+        console.log('🔒 100% local processing - no data sent to servers');
     } catch (error) {
         console.error('Error during installation:', error);
     }

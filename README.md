@@ -221,11 +221,48 @@ npm install
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+**Model Attribution**: This project uses the all-MiniLM-L6-v2 model and Transformers.js library under Apache License 2.0. See [ATTRIBUTION.md](ATTRIBUTION.md) for detailed credits and license compliance.
 
-- [Transformers.js](https://huggingface.co/docs/transformers.js) by Hugging Face
-- [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) sentence transformer model
-- Chrome Extensions API documentation
+## 🙏 Acknowledgments & Attribution
+
+This project is built on the incredible work of the open-source community:
+
+### AI Model
+- **[all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)** by [Sentence Transformers](https://www.sbert.net/)
+  - **License**: Apache License 2.0
+  - **Usage**: We download and use this pre-trained model locally for semantic similarity calculations
+  - **Attribution**: This model was created by Nils Reimers and Iryna Gurevych
+  - **Citation**: 
+    ```
+    @inproceedings{reimers-2019-sentence-bert,
+        title = "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks",
+        author = "Reimers, Nils and Gurevych, Iryna",
+        booktitle = "Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing",
+        year = "2019",
+    }
+    ```
+
+### AI Infrastructure
+- **[🤗 Transformers.js](https://huggingface.co/docs/transformers.js)** by [Hugging Face](https://huggingface.co/)
+  - **License**: Apache License 2.0
+  - **Usage**: JavaScript library for running transformer models in the browser
+  - **Special Thanks**: For making AI accessible in web browsers and enabling privacy-preserving local inference
+
+### Platform
+- **[Hugging Face Hub](https://huggingface.co/)** for model hosting and distribution
+  - Enables easy access to thousands of open-source AI models
+  - Provides the infrastructure that makes this extension possible
+
+### Technical Foundation
+- **Chrome Extensions API** by Google for the extension framework
+- **ONNX Runtime** for efficient model execution
+- **Jest** testing framework for quality assurance
+
+---
+
+**Fair Use & Commercial Use**: This extension downloads and uses the all-MiniLM-L6-v2 model under Apache License 2.0, which permits commercial use. The model is used as-is without modification for its intended purpose of generating sentence embeddings.
+
+**Data Privacy**: Unlike cloud-based AI services, this extension processes all data locally on your device. The model is downloaded once from Hugging Face and cached locally - no user data is ever sent to external servers.
 
 ---
 
