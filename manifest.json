@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Autonomous AI Curator",
+  "name": "X Timeline Curator",
   "version": "1.0.0",
-  "description": "An autonomous AI agent to curate your X feed. Runs 100% locally.",
+  "description": "AI-powered Chrome extension for curating your X/Twitter timeline using local transformers.js. 100% privacy-focused.",
   "permissions": [
     "storage",
     "scripting",

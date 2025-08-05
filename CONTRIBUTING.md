@@ -26,8 +26,8 @@ Thank you for your interest in contributing! This document provides guidelines a
 #### Development Setup
 
 ```bash
-git clone https://github.com/your-username/ai-curator-extension.git
-cd ai-curator-extension
+git clone https://github.com/Shantykins/X-Timeline-Curator.git
+cd X-Timeline-Curator
 npm install
 ```
 

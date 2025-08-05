@@ -19,8 +19,8 @@ A Chrome extension that uses AI to automatically curate your Twitter/X feed by h
 
 1. **Download the Extension**
    ```bash
-   git clone https://github.com/your-username/ai-curator-extension.git
-   cd ai-curator-extension
+   git clone https://github.com/Shantykins/X-Timeline-Curator.git
+   cd X-Timeline-Curator
    ```
 
 2. **Install Dependencies** (for development/testing)
@@ -31,7 +31,7 @@ A Chrome extension that uses AI to automatically curate your Twitter/X feed by h
 3. **Load in Chrome**
    - Open Chrome and navigate to `chrome://extensions`
    - Enable "Developer mode" (toggle in top right)
-   - Click "Load unpacked" and select the `ai-curator-extension/` directory
+   - Click "Load unpacked" and select the `X-Timeline-Curator/` directory
    - The extension icon will appear in your toolbar
 
 4. **First Setup**
@@ -49,7 +49,7 @@ A Chrome extension that uses AI to automatically curate your Twitter/X feed by h
 ## 🏗️ Architecture
 
 ```
-ai-curator-extension/
+X-Timeline-Curator/
 ├── manifest.json              # Extension configuration
 ├── scripts/
 │   ├── background.js          # Main extension logic & message routing
@@ -211,8 +211,8 @@ node tests/test-simple-download.js
 ### Development Setup
 
 ```bash
-git clone https://github.com/your-username/ai-curator-extension.git
-cd ai-curator-extension
+git clone https://github.com/Shantykins/X-Timeline-Curator.git
+cd X-Timeline-Curator
 npm install
 # Load extension in Chrome as described in Installation
 ```
